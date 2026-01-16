@@ -1,6 +1,6 @@
-// --- START OF FILE Paste January 16, 2026 - 8:30AM ---
+// --- START OF FILE Paste January 16, 2026 - 11:30AM ---
 
-// ignore_for_file: curly_braces_in_flow_control_structures, prefer_final_fields, use_build_context_synchronously, deprecated_member_use, prefer_const_constructors, duplicate_ignore
+// ignore_for_file: curly_braces_in_flow_control_structures, prefer_final_fields, use_build_context_synchronously, deprecated_member_use, prefer_const_constructors
 
 import 'dart:io';
 import 'dart:async';
@@ -123,7 +123,7 @@ class WorkshopProApp extends StatelessWidget {
 }
 
 // ==========================================
-// 3️⃣ DATABASE HELPER (v9)
+// 3️⃣ DATABASE HELPER (v10)
 // ==========================================
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -132,7 +132,8 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('suhaimsoft_erp_final_v9.db');
+    // Bumped to v10 to ensure 'discount' column exists
+    _database = await _initDB('suhaimsoft_erp_final_v10.db');
     return _database!;
   }
 
@@ -150,25 +151,25 @@ class DatabaseHelper {
 
     await db.execute('CREATE TABLE customers (id $idType, name $textType, phone $textType, car_model $textType, number_plate $textType)');
     await db.execute('CREATE TABLE stock (id $idType, item_code $textType, name $textType, quantity $intType, unit_price $numType, tax_percent $numType)');
-    await db.execute('CREATE TABLE bills (id $idType, customer_name $textType, customer_phone $textType, car_model $textType, number_plate $textType, grand_total $numType, paid_amount $numType, due_amount $numType, date $textType, service_type $textType, next_service_date $textType, worker_name $textType, payment_mode $textType, notes $textType, status $textType, worker_status $textType)');
+    // Added 'discount' column here
+    await db.execute('CREATE TABLE bills (id $idType, customer_name $textType, customer_phone $textType, car_model $textType, number_plate $textType, grand_total $numType, discount $numType, paid_amount $numType, due_amount $numType, date $textType, service_type $textType, next_service_date $textType, worker_name $textType, payment_mode $textType, notes $textType, status $textType, worker_status $textType)');
     await db.execute('CREATE TABLE bill_items (id $idType, bill_id $intType, item_name $textType, quantity $intType, unit_price $numType, total $numType)');
     await db.execute('CREATE TABLE employees (id $idType, name $textType, role $textType, salary $numType, status $textType)');
     await db.execute('CREATE TABLE salary_payments (id $idType, emp_name $textType, amount $numType, date $textType, notes $textType)');
     await db.execute('CREATE TABLE expenses (id $idType, title $textType, person_name $textType, description $textType, amount $numType, date $textType)');
     await db.execute('CREATE TABLE warranties (id $idType, customer_name $textType, item_name $textType, expiry_date $textType)');
     await db.execute('CREATE TABLE manufacturing (id $idType, product_name $textType, quantity_made $intType, notes $textType, date $textType)');
-    // Removed Todos table
   }
 
   Future<void> backupDatabase() async {
     try {
       final dbPath = await getApplicationDocumentsDirectory();
-      final srcPath = p.join(dbPath.path, 'suhaimsoft_erp_final_v9.db');
+      final srcPath = p.join(dbPath.path, 'suhaimsoft_erp_final_v10.db');
       final File srcFile = File(srcPath);
       if (!await srcFile.exists()) return;
       String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
       if (selectedDirectory != null) {
-        final String destPath = p.join(selectedDirectory, 'backup_erp_final_v9.db');
+        final String destPath = p.join(selectedDirectory, 'backup_erp_final_v10.db');
         await srcFile.copy(destPath);
       }
     } catch (e) { debugPrint("Backup Error: $e"); }
@@ -180,7 +181,7 @@ class DatabaseHelper {
       if (result != null && result.files.single.path != null) {
         File source = File(result.files.single.path!);
         final dbPath = await getApplicationDocumentsDirectory();
-        final String destPath = p.join(dbPath.path, 'suhaimsoft_erp_final_v9.db');
+        final String destPath = p.join(dbPath.path, 'suhaimsoft_erp_final_v10.db');
         if (_database != null && _database!.isOpen) await _database!.close();
         _database = null; 
         await source.copy(destPath);
@@ -509,10 +510,43 @@ class _CreateBillPageState extends State<CreateBillPage> {
     if (existingCust.isNotEmpty) { await db.update('customers', {'name': _customerCtrl.text, 'car_model': _carCtrl.text, 'number_plate': _plateCtrl.text}, where: 'phone = ?', whereArgs: [_phoneCtrl.text]); } 
     else { if (_phoneCtrl.text.isNotEmpty) await db.insert('customers', {'name': _customerCtrl.text, 'phone': _phoneCtrl.text, 'car_model': _carCtrl.text, 'number_plate': _plateCtrl.text}); }
 
-    int billId = await db.insert('bills', {'customer_name': _customerCtrl.text, 'customer_phone': _phoneCtrl.text, 'car_model': _carCtrl.text, 'number_plate': _plateCtrl.text, 'grand_total': total, 'paid_amount': paid, 'due_amount': due, 'date': DateFormat('yyyy-MM-dd').format(_invoiceDate), 'service_type': serviceFinal, 'next_service_date': DateFormat('yyyy-MM-dd').format(_nextService), 'worker_name': _selectedWorker ?? '', 'payment_mode': _paymentMode, 'notes': _notesCtrl.text, 'status': _billStatus, 'worker_status': _workerStatus});
+    int billId = await db.insert('bills', {
+      'customer_name': _customerCtrl.text, 
+      'customer_phone': _phoneCtrl.text, 
+      'car_model': _carCtrl.text, 
+      'number_plate': _plateCtrl.text, 
+      'grand_total': total, 
+      'discount': discount, 
+      'paid_amount': paid, 
+      'due_amount': due, 
+      'date': DateFormat('yyyy-MM-dd').format(_invoiceDate), 
+      'service_type': serviceFinal, 
+      'next_service_date': DateFormat('yyyy-MM-dd').format(_nextService), 
+      'worker_name': _selectedWorker ?? '', 
+      'payment_mode': _paymentMode, 
+      'notes': _notesCtrl.text, 
+      'status': _billStatus, 
+      'worker_status': _workerStatus
+    });
+
     for (var item in _cart) { await db.insert('bill_items', {'bill_id': billId, 'item_name': item['name'], 'quantity': item['qty'], 'unit_price': item['unit_price'], 'total': item['total']}); if(item['id'] != -1) await db.rawUpdate('UPDATE stock SET quantity = quantity - ? WHERE id = ?', [item['qty'], item['id']]); }
 
-    final billMap = {'id': billId, 'customer_name': _customerCtrl.text, 'customer_phone': _phoneCtrl.text, 'car_model': _carCtrl.text, 'number_plate': _plateCtrl.text, 'grand_total': total, 'paid_amount': paid, 'due_amount': due, 'date': DateFormat('yyyy-MM-dd').format(_invoiceDate), 'next_service_date': DateFormat('yyyy-MM-dd').format(_nextService), 'notes': _notesCtrl.text, 'status': _billStatus};
+    final billMap = {
+      'id': billId, 
+      'customer_name': _customerCtrl.text, 
+      'customer_phone': _phoneCtrl.text, 
+      'car_model': _carCtrl.text, 
+      'number_plate': _plateCtrl.text, 
+      'grand_total': total, 
+      'discount': discount, 
+      'paid_amount': paid, 
+      'due_amount': due, 
+      'payment_mode': _paymentMode,
+      'date': DateFormat('yyyy-MM-dd').format(_invoiceDate), 
+      'next_service_date': DateFormat('yyyy-MM-dd').format(_nextService), 
+      'notes': _notesCtrl.text, 
+      'status': _billStatus
+    };
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Bill Saved! Generating PDF..."), backgroundColor: Colors.green));
     await Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPreviewPage(bill: billMap)));
     _resetForm();
@@ -637,13 +671,14 @@ class _BillHistoryPageState extends State<BillHistoryPage> {
 
   void _openPdfPage(Map<String, dynamic> b) { Navigator.push(context, MaterialPageRoute(builder: (_) => PdfPreviewPage(bill: b))); }
   
-  // EDIT BILL DETAILS (Expanded functionality)
+  // EDIT BILL DETAILS (Full Edit)
   void _editBillDetails(Map<String, dynamic> b) {
     final nameCtrl = TextEditingController(text: b['customer_name']);
     final phoneCtrl = TextEditingController(text: b['customer_phone']);
     final carCtrl = TextEditingController(text: b['car_model']);
     final plateCtrl = TextEditingController(text: b['number_plate']);
     final totalCtrl = TextEditingController(text: b['grand_total'].toString());
+    final discountCtrl = TextEditingController(text: b['discount']?.toString() ?? "0");
     final paidCtrl = TextEditingController(text: b['paid_amount'].toString());
 
     showDialog(
@@ -662,6 +697,8 @@ class _BillHistoryPageState extends State<BillHistoryPage> {
             const SizedBox(height: 10),
             TextField(controller: totalCtrl, decoration: const InputDecoration(labelText: "Total Amount"), keyboardType: TextInputType.number),
             const SizedBox(height: 10),
+            TextField(controller: discountCtrl, decoration: const InputDecoration(labelText: "Discount Given"), keyboardType: TextInputType.number),
+            const SizedBox(height: 10),
             TextField(controller: paidCtrl, decoration: const InputDecoration(labelText: "Paid Amount"), keyboardType: TextInputType.number),
           ]),
         ),
@@ -670,6 +707,7 @@ class _BillHistoryPageState extends State<BillHistoryPage> {
             onPressed: () async {
               double newTotal = double.tryParse(totalCtrl.text) ?? 0.0;
               double newPaid = double.tryParse(paidCtrl.text) ?? 0.0;
+              double newDiscount = double.tryParse(discountCtrl.text) ?? 0.0;
               double newDue = newTotal - newPaid;
 
               final db = await DatabaseHelper.instance.database;
@@ -679,6 +717,7 @@ class _BillHistoryPageState extends State<BillHistoryPage> {
                 'car_model': carCtrl.text,
                 'number_plate': plateCtrl.text,
                 'grand_total': newTotal,
+                'discount': newDiscount,
                 'paid_amount': newPaid,
                 'due_amount': newDue
               }, where: 'id=?', whereArgs: [b['id']]);
@@ -721,7 +760,10 @@ class PdfPreviewPage extends StatelessWidget {
   Future<List<Map<String, dynamic>>> _getItems() async { final db = await DatabaseHelper.instance.database; return await db.query('bill_items', where: 'bill_id = ?', whereArgs: [bill['id']]); }
   @override Widget build(BuildContext context) {
     return Scaffold(appBar: AppBar(title: const Text("Invoice View")), body: PdfPreview(build: (format) async {
-      final items = await _getItems(); final doc = pw.Document();
+      final items = await _getItems(); 
+      final doc = pw.Document();
+      double subTotal = (bill['grand_total'] as num).toDouble() + (bill['discount'] as num? ?? 0).toDouble();
+
       doc.addPage(pw.Page(build: (pw.Context context) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
           pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
@@ -740,9 +782,12 @@ class PdfPreviewPage extends StatelessWidget {
         pw.TableHelper.fromTextArray(headers: ['Description', 'Quantity', 'Unit Price', 'Amount'], data: items.map((e) => [e['item_name'], e['quantity'].toString(), "${e['unit_price']}", "${e['total']}"]).toList(), border: null, headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white), headerDecoration: const pw.BoxDecoration(color: PdfColors.blue)),
         pw.SizedBox(height: 20),
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.end, children: [pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-          pw.Text("Subtotal: ${bill['grand_total']}"),
+          pw.Text("Subtotal: $subTotal"),
+          pw.Text("Discount: -${bill['discount'] ?? 0}"),
           pw.Text("Total Amount: ${bill['grand_total']}", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
-          pw.Text("Paid: ${bill['paid_amount']}"), pw.Text("Due: ${bill['due_amount']}")
+          pw.Text("Payment Mode: ${bill['payment_mode']}"),
+          pw.Text("Paid: ${bill['paid_amount']}"), 
+          pw.Text("Due: ${bill['due_amount']}", style: pw.TextStyle(color: PdfColors.red))
         ])]),
         pw.Spacer(),
         pw.Text("Generated by SuhaimSoft ERP", style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey))
@@ -837,7 +882,6 @@ class _SalTabState extends State<SalaryPaymentTab> {
   void _editSalary(Map<String, dynamic> item) {
     final amt = TextEditingController(text: item['amount'].toString());
     showDialog(context: context, builder: (_) => AlertDialog(
-      // ignore: prefer_const_constructors
       title: Row(children: [Text("Edit Salary"), const Spacer(), IconButton(icon: const Icon(Icons.close), onPressed: ()=>Navigator.pop(context))]),
       content: TextField(controller: amt, decoration: const InputDecoration(labelText: "Amount"), keyboardType: TextInputType.number),
       actions: [
@@ -1171,12 +1215,20 @@ class _CustPageState extends State<CustomersPage> {
 // ==========================================
 class SettingsPage extends StatelessWidget { const SettingsPage({super.key}); @override Widget build(BuildContext context) {
   return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    GridView.count(crossAxisCount: 2, shrinkWrap: true, padding: const EdgeInsets.all(20), mainAxisSpacing: 20, crossAxisSpacing: 20, children: [
-      _settingCard(Icons.upload, "Backup Data", AppColors.blueCard, () async { await DatabaseHelper.instance.backupDatabase(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Backup Process Started..."))); }),
-      _settingCard(Icons.download, "Restore Data", AppColors.orangeCard, () async { await DatabaseHelper.instance.restoreDatabase(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Restore Process Started..."))); }),
-    ]),
-    const SizedBox(height: 30),
-    Card(color: Colors.white, elevation: 4, child: Padding(padding: const EdgeInsets.all(30), child: Column(children: const [
+    ListTile(
+      leading: const CircleAvatar(backgroundColor: AppColors.primary, child: Icon(Icons.upload, color: Colors.white)),
+      title: const Text("Backup Database"),
+      subtitle: const Text("Save data to a secure location"),
+      onTap: () async { await DatabaseHelper.instance.backupDatabase(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Backup Process Started..."))); },
+    ),
+    ListTile(
+      leading: const CircleAvatar(backgroundColor: AppColors.secondary, child: Icon(Icons.download, color: Colors.white)),
+      title: const Text("Restore Database"),
+      subtitle: const Text("Load data from a backup file"),
+      onTap: () async { await DatabaseHelper.instance.restoreDatabase(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Restore Process Started..."))); },
+    ),
+    const Spacer(),
+    Card(color: Colors.white, elevation: 4, margin: const EdgeInsets.all(20), child: Padding(padding: const EdgeInsets.all(30), child: Column(children: const [
       Text("About SuhaimSoft", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.darkSidebar)),
       SizedBox(height: 15),
       Text("Address: Pathappiriyam, Edavanna\nMalappuram, Kerala", textAlign: TextAlign.center, style: TextStyle(fontSize: 18)),
@@ -1187,8 +1239,7 @@ class SettingsPage extends StatelessWidget { const SettingsPage({super.key}); @o
     ])))
   ]));
 }
-Widget _settingCard(IconData icon, String title, Gradient gradient, VoidCallback onTap) {
-  return InkWell(onTap: onTap, child: Container(decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)]), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 50, color: Colors.white), const SizedBox(height: 10), Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))])));
-}}
+}
 
 class LoginScreen extends StatelessWidget { const LoginScreen({super.key}); @override Widget build(BuildContext context) { final u=TextEditingController(), p=TextEditingController(); return Scaffold(body: Container(decoration: const BoxDecoration(gradient: AppColors.loginGradient), child: Center(child: Card(elevation: 20, shadowColor: Colors.black45, color: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), child: Container(width: 380, padding: const EdgeInsets.all(40), child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.lock_outline, size: 60, color: AppColors.primary), const SizedBox(height: 20), const Text("SUHAIMSOFT ERP", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.primary, letterSpacing: 1.5)), const SizedBox(height: 30), TextField(controller: u, decoration: const InputDecoration(labelText: "Username", prefixIcon: Icon(Icons.person))), const SizedBox(height: 20), TextField(controller: p, obscureText: true, decoration: const InputDecoration(labelText: "Password", prefixIcon: Icon(Icons.lock))), const SizedBox(height: 40), SizedBox(width: double.infinity, child: ElevatedButton(style: ElevatedButton.styleFrom(elevation: 10, shadowColor: Colors.blueAccent), onPressed: (){ if(u.text=='admin' && p.text=='admin123') Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>const DashboardLayout())); }, child: const Text("LOGIN", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2))))])))))); } }
+
